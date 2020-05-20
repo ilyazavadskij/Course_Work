@@ -1,6 +1,10 @@
 package com.stc.mp.integration.diarize;
 
 import com.google.common.collect.EvictingQueue;
+import com.stc.mp.integration.common.data.FileExt;
+import com.stc.mp.integration.common.utils.ChunkUtil;
+import com.stc.mp.integration.common.wavheader.WavHeader;
+import com.stc.mp.integration.common.wavheader.WavHeaderReader;
 import com.stc.mp.integration.diarize.data.ChannelData;
 import com.stc.mp.integration.diarize.data.ChunkData;
 import com.stc.mp.integration.diarize.data.DeviceParams;
@@ -12,7 +16,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
+
+import static com.stc.mp.integration.common.utils.SoundUtils.roundEven;
 
 @Component
 @Slf4j
@@ -57,16 +71,85 @@ public class Diarizer {
         }
     }
 
-    public void process() {
+    public void process() throws Exception {
         log.debug("In Diarizer");
+        String wavURI = "src/main/resources/Audio" + FileExt.WAV;
+        Path wavPath = Paths.get(wavURI);
+
+        List<MuteTime> muteTimes = diarizeFile(wavPath, null);
+        muteTimes.forEach(System.out::println);
+
+        writeWavFile(wavPath.toFile(), muteTimes);
     }
 
-    public List<MuteTime> diarizeFile(String wavFile, String deviceId, float sampleRate, int sampleSizeInBits) throws Exception {
+
+    static void writeWavFile(File wavFile, List<MuteTime> muteTimes) throws IOException {
+        WavHeader wavHeader = new WavHeaderReader(wavFile.getAbsolutePath()).read();
+        WavHeader wavHeaderDia = new WavHeaderReader(wavFile.getAbsolutePath()).read();
+        File wavFileDia = Paths.get(wavFile.getAbsolutePath().replace(FileExt.WAV, "_dia" + FileExt.WAV)).toFile();
+        System.out.println(wavFileDia);
+
+        wavHeaderDia.setNumChannels((short) 1);
+        wavHeaderDia.setSubChunk2Size(wavHeaderDia.getSubChunk2Size() / 2);
+
+        long fileSize = Files.size(wavFile.toPath());
+        fileSize = (fileSize - WavHeaderReader.HEADER_SIZE) / (wavHeaderDia.getBitsPerSample() / 8) / wavHeaderDia.getNumChannels();
+        try (AudioInputStream audioInputStream = new AudioInputStream(new ByteArrayInputStream(new byte[0]), BaseAudioProperties.getAudioFormatMono(), fileSize);
+             InputStream inputStream = Files.newInputStream(wavFile.toPath(), StandardOpenOption.READ);
+             OutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(wavFileDia.toPath(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING));) {
+
+            if (muteTimes == null || muteTimes.isEmpty()) {
+                Files.copy(wavFile.toPath(), new FileOutputStream(wavFileDia));
+            } else {
+                AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, outputStream);
+                inputStream.skip(WavHeaderReader.HEADER_SIZE);
+
+                MuteTime prevMuteTime = null;
+                for (MuteTime muteTime : muteTimes) {
+                    long writeBytes = (int) roundEven((prevMuteTime == null ? muteTime.getStart() : muteTime.getStart() - prevMuteTime.getStop()) * BaseAudioProperties.getBytesInMillisec(), 4);
+                    long skipBytes = roundEven((muteTime.getStop() - muteTime.getStart()) * BaseAudioProperties.getBytesInMillisec(), 4);
+
+                    prevMuteTime = muteTime;
+
+                    List<Integer> chunks = ChunkUtil.getChunkListSize(writeBytes);
+                    for (Integer chunk : chunks) {
+                        byte[] buffer = new byte[chunk];
+                        inputStream.read(buffer);
+                        byte[] newBuffer = new byte[chunk / 2];
+                        for (int i = 0; i < chunk / 4; i++) {
+                            newBuffer[2 * i] = buffer[4 * i];
+                            newBuffer[2 * i + 1] = buffer[4 * i + 1];
+                        }
+                        outputStream.write(newBuffer);
+                    }
+
+                    inputStream.skip(skipBytes);
+
+                    chunks = ChunkUtil.getChunkListSize(skipBytes);
+                    for (Integer chunk : chunks) {
+                        byte[] buffer = new byte[chunk / 2];
+                        outputStream.write(buffer);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error(e.getLocalizedMessage(), e);
+        }
+    }
+
+    public List<MuteTime> diarizeFile(Path wavPath, String deviceId) throws IOException {
+        File wavFile = wavPath.toFile();
         ChunkData chunkData = ChunkFileReader.readStereoWav(wavFile);
-        return diarize(chunkData, deviceId, sampleRate, sampleSizeInBits);
+
+        WavHeader wavHeader = new WavHeaderReader(wavFile.getAbsolutePath()).read();
+        log.info("{} HEADER\n{}", wavPath.getFileName(), wavHeader);
+        float sampleRate = wavHeader.getSampleRate();
+
+        log.debug("WavFile ({}) is diarizing", wavFile.getAbsolutePath());
+        return diarize(chunkData, deviceId, sampleRate);
     }
 
-    private List<MuteTime> diarize(ChunkData chunkData, String deviceId, float sampleRate, int sampleSizeInBits) throws Exception {
+    private List<MuteTime> diarize(ChunkData chunkData, String deviceId, float sampleRate) throws IOException {
         float blockSoundLength = BLOCK_SIZE * 1000 / sampleRate;
 
         DeviceParams deviceParams;
@@ -75,7 +158,7 @@ public class Diarizer {
         } else {
             deviceParams = new DeviceParams(deviceId, amplifyLeft, amplifyRight, amplitudeThreshold, minThreshold, maxThreshold);
         }
-        log.debug("({}) is diarizing with params: {}", deviceId, deviceParams);
+        log.debug("    With params: {}", deviceParams);
 
         List<MuteTime> muteTimes = new ArrayList<>();
 
@@ -94,9 +177,9 @@ public class Diarizer {
 //            short[] ogib1 = abs(s1, balancingThreshold);               //построение огибающей ненаправленного канала
 //            short[] ogib2 = abs(s2, 1d);             //построение огибающей направленного канала
 //
-//            long k1 = sum(ogib1);
 //            long k2 = sum(ogib2);
             long k1 = abssum(s1, deviceParams.getAmplifyRight());
+//            long k1 = sum(ogib1);
             long k2 = abssum(s2, deviceParams.getAmplifyLeft());
 
             long prev = sum(prvBlock, BLOCK_SIZE - 10); //prv[prv.length - 4];
@@ -138,6 +221,7 @@ public class Diarizer {
         }
         return muteTimes;
     }
+
 
     private short[] zeros(int size) {
         return new short[size];

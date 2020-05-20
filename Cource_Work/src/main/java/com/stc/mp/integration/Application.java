@@ -6,13 +6,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 
 @Slf4j
 @SpringBootApplication
 public class Application {
 
-    public static void main(String[] args) throws NoSuchFieldException, IllegalAccessException {
+    public static void main(String[] args) throws Exception {
         String pathSeparator = System.getProperty("path.separator");
         System.setProperty("java.library.path", System.getProperty("java.library.path") + pathSeparator + "." + pathSeparator);
         final Field sysPathsField = ClassLoader.class.getDeclaredField("sys_paths");

@@ -2,6 +2,8 @@ package com.stc.mp.integration.common.wavheader;
 
 import lombok.Data;
 
+import java.util.Arrays;
+
 /*
  * @author: Matvey Timchenko
  * DateTime: 09.07.2018:10:39
@@ -25,19 +27,22 @@ public class WavHeader {
 
     @Override
     public String toString() {
-        return "The RIFF chunk desriptor: " + new String(this.getChunkID()) + "\n" +
-                "Size of this chunk: " + this.getChunkSize() + "\n" +
-                "Format: " + new String(this.getFormat()) + "\n" + "\n" +
-                "fmt subchunk: " + new String(this.getSubChunk1ID()) + "\n" +
-                "Size of this chunk: " + this.getSubChunk1Size() + "\n" +
-                "Audio format: " + this.getAudioFormat() + "\n" +
-                "Number of channels: " + this.getNumChannels() + "\n" +
-                "Sample rate: " + this.getSampleRate() + "\n" +
-                "Byte rate: " + this.getByteRate() + "\n" +
-                "Block align: " + this.getBlockAlign() + "\n" +
-                "Bits per sample: " + this.getBitsPerSample() + "\n" + "\n" +
-                "channel subchunk: " + new String(this.getSubChunk2ID()) + "\n" +
-                "Size of this chunk: " + this.getSubChunk2Size();
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("The RIFF chunk desriptor: ").append(new String(chunkID)).append("\n")
+                .append("Size of this chunk: ").append(chunkSize).append("\n")
+                .append("Format: ").append(new String(format)).append("\n")
+                .append("fmt subchunk: ").append(new String(subChunk1ID)).append("\n")
+                .append("Size of this chunk: ").append(subChunk1Size).append("\n")
+                .append("Audio format: ").append(audioFormat).append("\n")
+                .append("Number of channels: ").append(numChannels).append("\n")
+                .append("Sample rate: ").append(sampleRate).append("\n")
+                .append("Byte rate: ").append(byteRate).append("\n")
+                .append("Block align: ").append(blockAlign).append("\n")
+                .append("Bits per sample: ").append(bitsPerSample).append("\n")
+                .append("channel subchunk: ").append(new String(subChunk2ID)).append("\n")
+                .append("Size of this chunk: ").append(subChunk2Size);
+
+        return stringBuilder.toString();
     }
 
 }

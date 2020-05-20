@@ -94,6 +94,15 @@ public class SoundUtils {
         }
     }
 
+    public byte[] intToByteArray(int value) {
+        byte[] bytes = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            bytes[i] = (byte) (value & 0xFF);
+            value >>= 8;
+        }
+        return bytes;
+    }
+
     public static long abssum(short[] data) {
         long value = 0;
         for (short d : data) {
@@ -121,5 +130,9 @@ public class SoundUtils {
         }
 
         return (float) value / (data.length - n);
+    }
+
+    public static long roundEven(float d, int base) {
+        return Math.round(d / base) * base;
     }
 }

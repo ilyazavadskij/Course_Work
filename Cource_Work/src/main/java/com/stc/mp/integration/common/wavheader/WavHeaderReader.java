@@ -5,6 +5,8 @@ package com.stc.mp.integration.common.wavheader;
  * DateTime: 09.07.2018:10:38
  */
 
+import lombok.Data;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;

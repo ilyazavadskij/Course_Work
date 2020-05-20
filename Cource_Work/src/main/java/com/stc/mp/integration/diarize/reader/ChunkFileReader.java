@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
@@ -14,7 +15,7 @@ import java.io.IOException;
 public class ChunkFileReader {
     private static int BUF_SIZE = 10485760;
 
-    public static ChunkData readStereoWav(String wavFile) throws IOException {
+    public static ChunkData readStereoWav(File wavFile) throws IOException {
         BufferedInputStream in = new BufferedInputStream(new FileInputStream(wavFile), BUF_SIZE);
         in.skip(WavHeaderReader.HEADER_SIZE);
         return new ChunkData(in);
