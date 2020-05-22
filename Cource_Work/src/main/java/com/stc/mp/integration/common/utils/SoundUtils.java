@@ -102,37 +102,4 @@ public class SoundUtils {
         }
         return bytes;
     }
-
-    public static long abssum(short[] data) {
-        long value = 0;
-        for (short d : data) {
-            value += Math.abs(d);
-        }
-        return value;
-    }
-
-    public static long countzeros(short[] data) {
-        long counter = 0;
-        for (short d : data) {
-            if (d == 0) {
-                counter++;
-            }
-        }
-        return counter;
-    }
-
-    public static float avgabssum(short[] data) {
-        long value = abssum(data);
-        long n = countzeros(data);
-
-        if (data.length == n) {
-            return 0;
-        }
-
-        return (float) value / (data.length - n);
-    }
-
-    public static long roundEven(float d, int base) {
-        return Math.round(d / base) * base;
-    }
 }
