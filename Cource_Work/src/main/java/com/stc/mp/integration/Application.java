@@ -1,12 +1,11 @@
 package com.stc.mp.integration;
 
-import com.stc.mp.integration.diarize.Diarizer;
+import com.stc.mp.integration.algorithms.Diarizer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 
 @Slf4j

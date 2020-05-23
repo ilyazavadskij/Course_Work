@@ -30,6 +30,10 @@ public class IOUtils {
         return resultData;
     }
 
+    public static long abssum(short[] data) {
+        return abssum(data, 1);
+    }
+
     public static long abssum(short[] data, double k) {
         long sum = 0;
         for (short datum : data) {

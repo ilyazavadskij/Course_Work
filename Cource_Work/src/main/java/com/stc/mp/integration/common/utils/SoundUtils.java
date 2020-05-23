@@ -1,7 +1,7 @@
 package com.stc.mp.integration.common.utils;
 
 import com.stc.mp.integration.common.wavheader.WavHeaderReader;
-import com.stc.mp.integration.diarize.data.ChannelData;
+import com.stc.mp.integration.algorithms.data.ChannelData;
 
 import java.io.File;
 import java.io.IOException;
